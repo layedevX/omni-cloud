@@ -92,8 +92,8 @@ class ViewController extends Controller {
 		try {
 			$event = new InternalLinkRequestEvent($fileid);
 			$this->eventDispatcher->dispatchTyped($event);
-			
-			return $event->getResponse() ?? $this->redirectToFile((int)$fileid, $opendetails, $openfile);
+
+			return $event->getResponse() ?? $this->redirectToFile((int)($event->getNewFileId() ?? $fileid), $opendetails, $openfile);
 		} catch (NotFoundException $e) {
 			// Keep the fileid even if not found, it will be used
 			// to detect the file could not be found and warn the user
