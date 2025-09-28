@@ -21,13 +21,6 @@
 				{{ t('user_name', 'Only from these groups:') }}
 			</div>
 
-			<!-- TODO -->
-			<!-- <input type="text" class="ldapManyGroupsSupport ldapManyGroupsSearch hidden" > -->
-			<!-- <NcTextField :disabled="ldapUserFilterMode"
-				:value.sync="ldapConfig.ldapUserFilterGroups"
-				:placeholder="t('user_name', 'Search groups')"
-				autocomplete="off" /> -->
-
 			<NcSelect v-model="ldapUserFilterGroups"
 				class="ldap-wizard__users__user-filter-groups__select"
 				:disabled="ldapUserFilterMode"
@@ -80,8 +73,8 @@ const ldapConfigsStore = useLDAPConfigsStore()
 
 const { ldapConfigs, selectedConfigId } = storeToRefs(ldapConfigsStore)
 const ldapConfig = ldapConfigsStore.selectedConfig({
-	ldapUserFilterObjectclass: getUserListFilter,
-	ldapUserFilterGroups: getUserListFilter,
+	ldapUserFilterObjectclass: reloadFilters,
+	ldapUserFilterGroups: reloadFilters,
 })
 
 const usersCount = ref<number|undefined>(undefined)
@@ -115,11 +108,15 @@ async function init() {
 
 init()
 
-async function getUserListFilter() {
+async function reloadFilters() {
 	if (ldapConfig.ldapUserFilterMode === '0') {
-		const response = await wizardStore.callWizardAction('getUserListFilter')
+		const response1 = await wizardStore.callWizardAction('getUserListFilter')
 		// Not using ldapConfig to avoid triggering the save logic.
-		ldapConfigs.value[selectedConfigId.value].ldapUserFilter = response.changes.ldap_userlist_filter
+		ldapConfigs.value[selectedConfigId.value].ldapUserFilter = response1.changes.ldap_userlist_filter
+
+		const response2 = await wizardStore.callWizardAction('getUserLoginFilter')
+		// Not using ldapConfig to avoid triggering the save logic.
+		ldapConfigs.value[selectedConfigId.value].ldapLoginFilter = response2.changes.ldap_userlogin_filter
 	}
 }
 

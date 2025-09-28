@@ -50,7 +50,7 @@
 				:placeholder="t('user_ldap', 'Test Login name')"
 				autocomplete="off" />
 
-			<NcButton :disabled="enableVerifyButton"
+			<NcButton :disabled="testUsername.length === 0"
 				@click="verifyLoginName">
 				{{ t('user_ldap', 'Verify settings') }}
 			</NcButton>
@@ -65,7 +65,7 @@ import { storeToRefs } from 'pinia'
 import { t } from '@nextcloud/l10n'
 import { NcButton, NcTextField, NcTextArea, NcCheckboxRadioSwitch, NcSelect } from '@nextcloud/vue'
 import { getCapabilities } from '@nextcloud/capabilities'
-import { showError, showSuccess } from '@nextcloud/dialogs'
+import { showError, showSuccess, showWarning } from '@nextcloud/dialogs'
 
 import { useLDAPConfigsStore } from '../../store/configs'
 import { useWizardStore } from '../../store/wizard'
@@ -83,7 +83,6 @@ const ldapConfig = ldapConfigsStore.selectedConfig({
 
 const instanceName = (getCapabilities() as { theming: { name:string } }).theming.name
 const testUsername = ref('')
-const enableVerifyButton = ref(false)
 const loginFilterOptions = ref<string[]>([])
 
 const ldapLoginFilterAttributes = computed({
@@ -121,11 +120,11 @@ async function verifyLoginName() {
 		const { changes: { ldap_test_loginname: testLoginName, ldap_test_effective_filter: testEffectiveFilter } } = await wizardStore.callWizardAction('testLoginName', { ldap_test_loginname: testUsername.value })
 
 		if (testLoginName < 1) {
-			showSuccess(t('user_ldap', 'User not found. Please check your login attributes and username. Effective filter (to copy-and-paste for command-line validation): {filter}', { filter: testEffectiveFilter }))
+			showError(t('user_ldap', 'User not found. Please check your login attributes and username. Effective filter (to copy-and-paste for command-line validation): {filter}', { filter: testEffectiveFilter }))
 		} else if (testLoginName === 1) {
 			showSuccess(t('user_ldap', 'User found and settings verified.'))
 		} else if (testLoginName > 1) {
-			showSuccess(t('user_ldap', 'Consider narrowing your search, as it encompassed many users, only the first one of whom will be able to log in.'))
+			showWarning(t('user_ldap', 'Consider narrowing your search, as it encompassed many users, only the first one of whom will be able to log in.'))
 		}
 	} catch (error) {
 		const message = error ?? t('user_ldap', 'An unspecified error occurred. Please check log and settings.')

@@ -75,16 +75,10 @@ export async function testConfiguration(configId: string) {
 	const params = new FormData()
 	params.set('ldap_serverconfig_chooser', configId)
 
-	const response = await axios.post(
+	const response: AxiosResponse<{message: string, status: 'error'|'success'}> = await axios.post(
 		path.join(AJAX_ENDPOINT, 'testConfiguration.php'),
 		params,
 	)
-
-	if (response.data.status === 'success') {
-		showSuccess(response.data.message)
-	} else {
-		showError(response.data.message)
-	}
 
 	logger.debug(`Configuration is ${response.data.status === 'success' ? 'valide' : 'invalide'}`, { configId, params, response })
 

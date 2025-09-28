@@ -86,7 +86,7 @@ import { storeToRefs } from 'pinia'
 import ContentCopy from 'vue-material-design-icons/ContentCopy.vue'
 import Delete from 'vue-material-design-icons/Delete.vue'
 
-import { t } from '@nextcloud/l10n'
+import { n, t } from '@nextcloud/l10n'
 import { NcButton, NcTextField, NcTextArea, NcCheckboxRadioSwitch } from '@nextcloud/vue'
 import { showInfo } from '@nextcloud/dialogs'
 
@@ -124,8 +124,22 @@ async function guessBaseDN() {
 
 async function countInBaseDN() {
 	const { changes: { ldap_test_base: ldapTestBase } } = await callWizardAction('countInBaseDN')
-	// TODO:use the message from wizardTabElementary.js:287
-	showInfo(t('user_ldap', 'Found {count} entries in the given Base DN.', { count: ldapTestBase }))
+
+	if (ldapTestBase < 1) {
+		showInfo(t('user_ldap', 'No object found in the given Base DN. Please revise.'))
+	} else if (ldapTestBase > 1000) {
+		showInfo(t('user_ldap', 'More than 1,000 directory entries available.'))
+	} else {
+		showInfo(
+			n(
+				'user_ldap',
+				'{ldapTestBase} entry available within the provided Base DN',
+				'{ldapTestBase} entries available within the provided Base DN',
+				ldapTestBase,
+				{ ldapTestBase },
+			),
+		)
+	}
 }
 </script>
 <style lang="scss" scoped>

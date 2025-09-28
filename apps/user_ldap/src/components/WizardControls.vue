@@ -4,8 +4,9 @@
  -->
 <template>
 	<div class="ldap-wizard__controls">
-		<!-- TODO -->
-		<span class="ldap_config_state_indicator" /> <span class="ldap_config_state_indicator_sign" />
+		<NcButton type="primary" :disabled="loading" @click="testSelectedConfig">
+			{{ t('user_ldap', 'Test Configuration') }}
+		</NcButton>
 
 		<NcButton type="tertiary"
 			href="https://docs.nextcloud.com/server/stable/go.php?to=admin-ldap"
@@ -17,36 +18,48 @@
 			<span>{{ t('user_ldap', 'Help') }}</span>
 		</NcButton>
 
-		<NcButton type="primary" :disabled="loading" @click="testSelectedConfig">
-			{{ t('user_ldap', 'Test Configuration') }}
-		</NcButton>
+		<template v-if="result !== null && !loading">
+			<span class="ldap-wizard__controls__state_indicator"
+				:class="{'ldap-wizard__controls__state_indicator--valid': isValide}" />
+
+			<span class="ldap-wizard__controls__state_message">
+				{{ result.message }}
+			</span>
+		</template>
+
+		<NcLoadingIcon v-if="loading" :size="16" />
 	</div>
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import Information from 'vue-material-design-icons/ContentCopy.vue'
 
 import { t } from '@nextcloud/l10n'
-import { NcButton } from '@nextcloud/vue'
+import { NcButton, NcLoadingIcon } from '@nextcloud/vue'
 
 import { testConfiguration } from '../services/ldapConfigService'
 import { useLDAPConfigsStore } from '../store/configs'
 
 const ldapConfigsStore = useLDAPConfigsStore()
-const { selectedConfigId } = storeToRefs(ldapConfigsStore)
+const { selectedConfigId, updatingConfig } = storeToRefs(ldapConfigsStore)
 
 const loading = ref(false)
+const result = ref<{message: string, status: 'error'|'success'}|null>(null)
+const isValide = computed(() => result.value?.status === 'success')
 
-/**
- *
- */
-function testSelectedConfig() {
+watch(updatingConfig, (newVal) => {
+	if (newVal === 0) {
+		testSelectedConfig()
+	}
+})
+
+async function testSelectedConfig() {
 	try {
 		loading.value = true
-		testConfiguration(selectedConfigId.value)
+		result.value = await testConfiguration(selectedConfigId.value)
 	} finally {
 		loading.value = false
 	}
@@ -57,6 +70,25 @@ function testSelectedConfig() {
 	display: flex;
 	gap: 16px;
 	align-items: center;
-	justify-content: end;
+	min-height: 45px; // Prevents jumping when the message length need two lines.
+
+	& > * {
+		flex-shrink: 0;
+	}
+
+	&__state_message {
+		flex-shrink: 1;
+	}
+
+	&__state_indicator {
+		width: 16px;
+		height: 16px;
+		border-radius: 100%;
+		background-color: var(--color-element-error);
+
+		&--valid {
+			background-color: var(--color-element-success);
+		}
+	}
 }
 </style>
