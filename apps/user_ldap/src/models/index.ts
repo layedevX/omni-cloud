@@ -18,7 +18,7 @@ export type LDAPConfig = {
 	ldapIgnoreNamingRules: string // Example: >
 	ldapUserDisplayName: string // Example: displayname
 	ldapUserDisplayName2: string // Example: uid
-	ldapUserFilterObjectclass: string // Example: inetOrgPerson
+	ldapUserFilterObjectclass?: string // Example: inetOrgPerson
 	ldapUserFilterGroups: string
 	ldapUserFilter: string // Example: (&amp;(objectclass=nextcloudUser)(nextcloudEnabled=TRUE))
 	ldapUserFilterMode: '0'|'1' // Example: 1

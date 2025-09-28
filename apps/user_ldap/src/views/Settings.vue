@@ -81,7 +81,7 @@
 <script lang="ts" setup>
 
 import Plus from 'vue-material-design-icons/Plus.vue'
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import { t } from '@nextcloud/l10n'
@@ -96,8 +96,7 @@ import ExpertTab from '../components/SettingsTabs/ExpertTab.vue'
 import AdvancedTab from '../components/SettingsTabs/AdvancedTab.vue'
 import WizardControls from '../components/WizardControls.vue'
 import { useLDAPConfigsStore } from '../store/configs'
-import { clearMapping, updateConfig, } from '../services/ldapConfigService'
-import { useWizardStore } from '../store/wizard'
+import { clearMapping } from '../services/ldapConfigService'
 
 const ldapModuleInstalled = loadState('user_ldap', 'ldapModuleInstalled')
 
@@ -114,21 +113,11 @@ const rightTabs = {
 }
 
 const ldapConfigsStore = useLDAPConfigsStore()
-const { ldapConfigs, selectedConfigId, selectedConfig, updatingConfig } = storeToRefs(ldapConfigsStore)
+const { ldapConfigs, selectedConfigId, selectedConfig } = storeToRefs(ldapConfigsStore)
 
 const selectedTab = ref('server')
 const clearMappingLoading = ref(false)
 
-watch(ldapConfigsStore.selectedConfig, async () => {
-	updatingConfig.value++
-	await updateConfig(selectedConfigId.value, selectedConfig.value)
-	updatingConfig.value--
-})
-
-/**
- *
- * @param subject
- */
 async function requestClearMapping(subject: 'user'|'group') {
 	try {
 		clearMappingLoading.value = true

@@ -7,18 +7,38 @@ import Vue, { computed, ref } from 'vue'
 
 import { loadState } from '@nextcloud/initial-state'
 
-import { createConfig, deleteConfig, getConfig } from '../services/ldapConfigService'
+import { callWizard, createConfig, deleteConfig, getConfig } from '../services/ldapConfigService'
 import type { LDAPConfig } from '../models'
 
 export const useLDAPConfigsStore = defineStore('ldap-configs', () => {
 	const ldapConfigs = ref(loadState('user_ldap', 'ldapConfigs') as Record<string, LDAPConfig>)
 	const selectedConfigId = ref<string>(Object.keys(ldapConfigs.value)[0])
-	const selectedConfig = computed<LDAPConfig>(() => ldapConfigs.value[selectedConfigId.value])
+	const selectedConfig = computed(() => {
+		return <J>(postSetHooks: Partial<Record<keyof LDAPConfig, (value: J) => void >> = {}) => {
+			return new Proxy(ldapConfigs.value[selectedConfigId.value], {
+				get(target, property) {
+					return target[property]
+				},
+				set(target, property: string, newValue) {
+					target[property] = newValue
+
+					;(async () => {
+						updatingConfig.value++
+						await callWizard('save', selectedConfigId.value, { cfgkey: property, cfgval: newValue })
+						updatingConfig.value--
+
+						if (postSetHooks[property] !== undefined) {
+							postSetHooks[property](target[property])
+						}
+					})()
+
+					return true
+				},
+			})
+		}
+	})
 	const updatingConfig = ref(0)
 
-	/**
-	 *
-	 */
 	async function create() {
 		const configId = await createConfig()
 		const config = await getConfig(configId)
@@ -27,10 +47,6 @@ export const useLDAPConfigsStore = defineStore('ldap-configs', () => {
 		return configId
 	}
 
-	/**
-	 *
-	 * @param fromConfigId
-	 */
 	async function copyConfig(fromConfigId: string) {
 		const configId = await createConfig()
 		ldapConfigs.value[configId] = { ...ldapConfigs.value[fromConfigId] }
@@ -38,10 +54,6 @@ export const useLDAPConfigsStore = defineStore('ldap-configs', () => {
 		return configId
 	}
 
-	/**
-	 *
-	 * @param configId
-	 */
 	async function removeConfig(configId: string) {
 		const result = await deleteConfig(configId)
 		if (result === true) {

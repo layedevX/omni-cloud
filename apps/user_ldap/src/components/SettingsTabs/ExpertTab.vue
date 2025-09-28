@@ -29,15 +29,14 @@
 </template>
 
 <script lang="ts" setup>
-import { storeToRefs } from 'pinia'
-
 import { t } from '@nextcloud/l10n'
 import { NcTextField } from '@nextcloud/vue'
 
 import { useLDAPConfigsStore } from '../../store/configs'
 
 const ldapConfigsStore = useLDAPConfigsStore()
-const { selectedConfig: ldapConfig } = storeToRefs(ldapConfigsStore)
+const ldapConfig = ldapConfigsStore.selectedConfig()
+
 </script>
 <style lang="scss" scoped>
 .ldap-wizard__expert {

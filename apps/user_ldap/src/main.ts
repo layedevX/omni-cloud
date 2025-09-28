@@ -16,5 +16,6 @@ Vue.use(PiniaVuePlugin)
 
 const LDAPSettingsAppVue = Vue.extend(LDAPSettingsApp)
 new LDAPSettingsAppVue({
+	name: 'LDAPSettingsApp',
 	pinia,
 }).$mount('#content-ldap-settings')

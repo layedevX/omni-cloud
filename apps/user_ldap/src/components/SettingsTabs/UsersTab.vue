@@ -7,13 +7,12 @@
 		{{ t('user_name', 'Listing and searching for users is constrained by these criteria:') }}
 
 		<div class="ldap-wizard__users__line ldap-wizard__users__user-filter-object-class">
-			<NcSelect :model-value="ldapUserFilterObjectclass"
-				:disabled="ldapConfig.ldapUserFilterMode === '1'"
+			<NcSelect v-model="ldapUserFilterObjectclass"
+				:disabled="ldapUserFilterMode"
 				class="ldap-wizard__users__user-filter-object-class__select"
 				:options="userObjectClasses"
 				:input-label="t('user_name', 'Only these object classes:')"
-				:multiple="true"
-				@update:model-value="updateUserFilterObjectclass" />
+				:multiple="true" />
 			{{ t('user_name', 'The most common object classes for users are organizationalPerson, person, user, and inetOrgPerson. If you are not sure which object class to select, please consult your directory admin.') }}
 		</div>
 
@@ -24,34 +23,33 @@
 
 			<!-- TODO -->
 			<!-- <input type="text" class="ldapManyGroupsSupport ldapManyGroupsSearch hidden" > -->
-			<!-- <NcTextField :disabled="ldapConfig.ldapUserFilterMode === '1'"
+			<!-- <NcTextField :disabled="ldapUserFilterMode"
 				:value.sync="ldapConfig.ldapUserFilterGroups"
 				:placeholder="t('user_name', 'Search groups')"
 				autocomplete="off" /> -->
 
-			<NcSelect :model-value="ldapUserFilterGroups"
+			<NcSelect v-model="ldapUserFilterGroups"
 				class="ldap-wizard__users__user-filter-groups__select"
-				:disabled="ldapConfig.ldapUserFilterMode === '1'"
+				:disabled="ldapUserFilterMode"
 				:options="userGroups"
 				:input-label="t('user_name', 'Only these groups:')"
-				:multiple="true"
-				@update:model-value="updateUserFilterGroups" />
+				:multiple="true" />
 		</div>
 
 		<div class="ldap-wizard__users__line ldap-wizard__users__user-filter">
-			<NcCheckboxRadioSwitch :checked="ldapConfig.ldapUserFilterMode === '1'"
+			<NcCheckboxRadioSwitch :checked="ldapUserFilterMode"
 				@update:checked="toggleFilterMode">
 				{{ t('user_name', 'Edit LDAP Query') }}
 			</NcCheckboxRadioSwitch>
 
-			<div v-if="ldapConfig.ldapUserFilterMode === '0'">
-				<label>{{ t('user_name', 'LDAP Filter:') }}</label>
-				<code>{{ ldapConfig.ldapUserFilter }}</code>
-			</div>
-			<div v-else>
+			<div v-if="ldapUserFilterMode">
 				<NcTextArea :value.sync="ldapConfig.ldapUserFilter"
 					:placeholder="t('user_name', 'Edit LDAP Query')"
 					:helper-text="t('user_name', 'The filter specifies which LDAP users shall have access to the {instanceName} instance.', { instanceName })" />
+			</div>
+			<div v-else>
+				<label>{{ t('user_name', 'LDAP Filter:') }}</label>
+				<code>{{ ldapConfig.ldapUserFilter }}</code>
 			</div>
 		</div>
 
@@ -66,7 +64,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import { t } from '@nextcloud/l10n'
@@ -79,7 +77,12 @@ import { showEnableAutomaticFilterInfo } from '../../services/ldapConfigService'
 
 const wizardStore = useWizardStore()
 const ldapConfigsStore = useLDAPConfigsStore()
-const { selectedConfig: ldapConfig, updatingConfig } = storeToRefs(ldapConfigsStore)
+
+const { ldapConfigs, selectedConfigId } = storeToRefs(ldapConfigsStore)
+const ldapConfig = ldapConfigsStore.selectedConfig({
+	ldapUserFilterObjectclass: getUserListFilter,
+	ldapUserFilterGroups: getUserListFilter,
+})
 
 const usersCount = ref<number|undefined>(undefined)
 
@@ -88,44 +91,36 @@ const instanceName = (getCapabilities() as { theming: { name:string } }).theming
 const userObjectClasses = ref([] as string[])
 const userGroups = ref([] as string[])
 
-const shouldRequestLdapUserFilter = ref(false)
-
-const ldapUserFilterObjectclass = computed(() => ldapConfig.value.ldapUserFilterObjectclass.split(';').filter((item) => item !== ''))
-function updateUserFilterObjectclass(value: string[]) {
-	ldapConfig.value.ldapUserFilterObjectclass = value.join(';')
-	shouldRequestLdapUserFilter.value = true
-}
-
-const ldapUserFilterGroups = computed(() => ldapConfig.value.ldapUserFilterGroups.split(';').filter((item) => item !== ''))
-function updateUserFilterGroups(value: string[]) {
-	ldapConfig.value.ldapUserFilterGroups = value.join(';')
-	shouldRequestLdapUserFilter.value = true
-}
-
-watch(updatingConfig, async () => {
-	if (shouldRequestLdapUserFilter.value === true && updatingConfig.value === 0 && ldapConfig.value.ldapUserFilterMode === '0') {
-		getUserListFilter()
-	}
+const ldapUserFilterObjectclass = computed<string[]>({
+	get() { return ldapConfig.ldapUserFilterObjectclass?.split(';').filter((item) => item !== '') ?? [] },
+	set(value) { ldapConfig.ldapUserFilterObjectclass = value.join(';') },
 })
+const ldapUserFilterGroups = computed({
+	get() { return ldapConfig.ldapUserFilterGroups.split(';').filter((item) => item !== '') },
+	set(value) { ldapConfig.ldapUserFilterGroups = value.join(';') },
+})
+const ldapUserFilterMode = computed(() => ldapConfig.ldapUserFilterMode === '1')
 
 async function init() {
 	const response1 = await wizardStore.callWizardAction('determineUserObjectClasses')
 	userObjectClasses.value = response1.options.ldap_userfilter_objectclass
-	ldapConfig.value.ldapUserFilterObjectclass = response1.changes.ldap_userfilter_objectclass
+	// Not using ldapConfig to avoid triggering the save logic.
+	ldapConfigs.value[selectedConfigId.value].ldapUserFilterObjectclass = response1.changes.ldap_userfilter_objectclass.join(';')
 
 	const response2 = await wizardStore.callWizardAction('determineGroupsForUsers')
 	userGroups.value = response2.options.ldap_userfilter_groups
-	ldapConfig.value.ldapUserFilterGroups = response2.changes.ldap_userfilter_groups
-
-	await getUserListFilter()
+	// Not using ldapConfig to avoid triggering the save logic.
+	ldapConfigs.value[selectedConfigId.value].ldapUserFilterGroups = response2.changes.ldap_userfilter_groups.join(';')
 }
 
 init()
 
 async function getUserListFilter() {
-	const response = await wizardStore.callWizardAction('getUserListFilter')
-	ldapConfig.value.ldapUserFilter = response.changes.ldap_userlist_filter
-	shouldRequestLdapUserFilter.value = false
+	if (ldapConfig.ldapUserFilterMode === '0') {
+		const response = await wizardStore.callWizardAction('getUserListFilter')
+		// Not using ldapConfig to avoid triggering the save logic.
+		ldapConfigs.value[selectedConfigId.value].ldapUserFilter = response.changes.ldap_userlist_filter
+	}
 }
 
 async function countUsers() {
@@ -135,9 +130,9 @@ async function countUsers() {
 
 async function toggleFilterMode(value: boolean) {
 	if (value) {
-		ldapConfig.value.ldapUserFilterMode = '1'
+		ldapConfig.ldapUserFilterMode = '1'
 	} else {
-		ldapConfig.value.ldapUserFilterMode = await showEnableAutomaticFilterInfo()
+		ldapConfig.ldapUserFilterMode = await showEnableAutomaticFilterInfo()
 	}
 }
 </script>

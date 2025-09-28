@@ -12,6 +12,7 @@ import type { OCSResponse } from '@nextcloud/typings/ocs'
 import { t } from '@nextcloud/l10n'
 
 import type { LDAPConfig } from '../models'
+import logger from './logger'
 
 const AJAX_ENDPOINT = path.join(getAppRootUrl('user_ldap'), '/ajax')
 
@@ -32,48 +33,36 @@ export type WizardAction =
 	'countUsers' |
 	'countGroups' |
 	'countInBaseDN' |
-	'testLoginName'
+	'testLoginName' |
+	'save'
 
-/**
- *
- * @param config
- */
 export async function createConfig() {
-	const response = await axios.post(generateOcsUrl('apps/user_ldap/api/v1/config'))
-	return response.data.ocs.data.configID as string
+	const response: AxiosResponse<OCSResponse<{configID: string}>> = await axios.post(generateOcsUrl('apps/user_ldap/api/v1/config'))
+	logger.debug('Created configuration', { configId: response.data.ocs.data.configID })
+	return response.data.ocs.data.configID
 }
 
-/**
- *
- * @param configId
- * @param config
- */
 export async function getConfig(configId: string): Promise<LDAPConfig> {
 	const response: AxiosResponse<OCSResponse<LDAPConfig>> = await axios.get(generateOcsUrl('apps/user_ldap/api/v1/config/{configId}', { configId }))
+	logger.debug('Fetched configuration', { configId, config: response.data.ocs.data })
 	return response.data.ocs.data
 }
 
-/**
- *
- * @param configId
- * @param config
- */
 export async function updateConfig(configId: string, config: LDAPConfig): Promise<LDAPConfig> {
 	const response: AxiosResponse<OCSResponse<LDAPConfig>> = await axios.put(
 		generateOcsUrl('apps/user_ldap/api/v1/config/{configId}', { configId }),
 		{ configData: config },
 	)
 
+	logger.debug('Updated configuration', { configId, config })
+
 	return response.data.ocs.data
 }
 
-/**
- *
- * @param configId
- */
 export async function deleteConfig(configId: string): Promise<boolean> {
 	try {
 		await axios.delete(generateOcsUrl('apps/user_ldap/api/v1/config/{configId}', { configId }))
+		logger.debug('Deleted configuration', { configId })
 	} catch (error) {
 		const errorResponse = (error as AxiosError<OCSResponse>).response
 		showError(errorResponse?.data.ocs.meta.message || t('user_ldap', 'Fail to delete config'))
@@ -82,10 +71,6 @@ export async function deleteConfig(configId: string): Promise<boolean> {
 	return true
 }
 
-/**
- * Starts a configuration test.
- * @param configId
- */
 export async function testConfiguration(configId: string) {
 	const params = new FormData()
 	params.set('ldap_serverconfig_chooser', configId)
@@ -101,13 +86,11 @@ export async function testConfiguration(configId: string) {
 		showError(response.data.message)
 	}
 
+	logger.debug(`Configuration is ${response.data.status === 'success' ? 'valide' : 'invalide'}`, { configId, params, response })
+
 	return response.data
 }
 
-/**
- *
- * @param subject
- */
 export async function clearMapping(subject: 'user' | 'group') {
 	const params = new FormData()
 	params.set('ldap_clear_mapping', subject)
@@ -118,18 +101,13 @@ export async function clearMapping(subject: 'user' | 'group') {
 	)
 
 	if (response.data.status === 'success') {
+		logger.debug('Cleared mapping', { subject, params, response })
 		showSuccess(t('user_ldap', 'Mapping cleared'))
 	} else {
 		showError(t('user_ldap', 'Failed to clear mapping'))
 	}
 }
 
-/**
- * Calls the wizard endpoint.
- * @param action
- * @param configId
- * @param extraParams
- */
 export async function callWizard(action: WizardAction, configId: string, extraParams: Record<string, string> = {}) {
 	const params = new FormData()
 	params.set('action', action)
@@ -148,6 +126,8 @@ export async function callWizard(action: WizardAction, configId: string, extraPa
 		showError(response.data.message)
 		throw new Error(response.data.message)
 	}
+
+	logger.debug(`Called wizard action: ${action}`, { configId, params, response })
 
 	return response.data
 }

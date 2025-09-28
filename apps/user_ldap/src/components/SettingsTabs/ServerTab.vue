@@ -94,47 +94,39 @@ import { useLDAPConfigsStore } from '../../store/configs'
 import { useWizardStore } from '../../store/wizard'
 
 const ldapConfigsStore = useLDAPConfigsStore()
-const { selectedConfigId: ldapConfigId, selectedConfig: ldapConfig } = storeToRefs(ldapConfigsStore)
+const { selectedConfigId: ldapConfigId, ldapConfigs, selectedConfigId } = storeToRefs(ldapConfigsStore)
 const { currentWizardActions, callWizardAction } = useWizardStore()
 
-const localLdapAgentName = ref(ldapConfig.value.ldapAgentName)
-const localLdapAgentPassword = ref(ldapConfig.value.ldapAgentPassword)
+const ldapConfig = ldapConfigsStore.selectedConfig()
+
+const localLdapAgentName = ref(ldapConfig.ldapAgentName)
+const localLdapAgentPassword = ref(ldapConfig.ldapAgentPassword)
 const needsToSaveCredentials = computed(() => {
-	return ldapConfig.value.ldapAgentName !== localLdapAgentName.value || ldapConfig.value.ldapAgentPassword !== localLdapAgentPassword.value
+	return ldapConfig.ldapAgentName !== localLdapAgentName.value || ldapConfig.ldapAgentPassword !== localLdapAgentPassword.value
 })
 
-/**
- *
- */
 function updateCredentials() {
-	ldapConfig.value.ldapAgentName = localLdapAgentName.value
-	ldapConfig.value.ldapAgentPassword = localLdapAgentPassword.value
+	ldapConfig.ldapAgentName = localLdapAgentName.value
+	ldapConfig.ldapAgentPassword = localLdapAgentPassword.value
 }
 
-/**
- *
- */
 async function guessPortAndTLS() {
 	const { changes: { ldap_port: ldapPort } } = await callWizardAction('guessPortAndTLS')
-	ldapConfig.value.ldapPort = String(ldapPort)
+	// Not using ldapConfig to avoid triggering the save logic.
+	ldapConfigs.value[selectedConfigId.value].ldapPort = ldapPort
 }
 
-/**
- *
- */
 async function guessBaseDN() {
 	const { changes: { ldap_base: ldapBase } } = await callWizardAction('guessBaseDN')
-	ldapConfig.value.ldapBase = ldapBase
+	// Not using ldapConfig to avoid triggering the save logic.
+	ldapConfigs.value[selectedConfigId.value].ldapBase = ldapBase
 }
 
-/**
- *
- */
 async function countInBaseDN() {
 	const { changes: { ldap_test_base: ldapTestBase } } = await callWizardAction('countInBaseDN')
 	// TODO:use the message from wizardTabElementary.js:287
-	showInfo(t('user_ldap', 'Found {count} entries in the given Base DN.', { count: ldapTestBase }))}
-
+	showInfo(t('user_ldap', 'Found {count} entries in the given Base DN.', { count: ldapTestBase }))
+}
 </script>
 <style lang="scss" scoped>
 .ldap-wizard__server {

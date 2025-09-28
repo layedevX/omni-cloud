@@ -19,7 +19,7 @@
 				:helper-text="t('user_ldap', 'Give an optional backup host. It must be a replica of the main LDAP/AD server.')" />
 
 			<NcTextField type="number"
-				:value="ldapConfig.ldapBackupPort"
+				:value.sync="ldapConfig.ldapBackupPort"
 				:label="t('user_ldap', 'Backup (Replica) Port') " />
 
 			<NcCheckboxRadioSwitch :checked="ldapConfig.ldapOverrideMainServer === '1'"
@@ -36,7 +36,7 @@
 
 			<NcTextField type="number"
 				:label="t('user_ldap', 'Cache Time-To-Live')"
-				:value="ldapConfig.ldapCacheTTL"
+				:value.sync="ldapConfig.ldapCacheTTL"
 				:helper-text="t('user_ldap', 'in seconds. A change empties the cache.')" />
 		</details>
 
@@ -209,8 +209,6 @@
 </template>
 
 <script lang="ts" setup>
-import { storeToRefs } from 'pinia'
-
 import { t } from '@nextcloud/l10n'
 import { NcTextField, NcTextArea, NcCheckboxRadioSwitch, NcSelect } from '@nextcloud/vue'
 import { getCapabilities } from '@nextcloud/capabilities'
@@ -218,7 +216,7 @@ import { getCapabilities } from '@nextcloud/capabilities'
 import { useLDAPConfigsStore } from '../../store/configs'
 
 const ldapConfigsStore = useLDAPConfigsStore()
-const { selectedConfig: ldapConfig } = storeToRefs(ldapConfigsStore)
+const ldapConfig = ldapConfigsStore.selectedConfig()
 
 const instanceName = (getCapabilities() as { theming: { name:string } }).theming.name
 
